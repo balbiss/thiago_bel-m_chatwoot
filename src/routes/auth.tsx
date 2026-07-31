@@ -1,10 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Loader2, Mail, Lock, Sparkles, TrendingUp, Target, Zap } from "lucide-react";
+import { ArrowRight, Loader2, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import inoovawebIcon from "@/assets/inoovaweb-icon.png";
 
 export const Route = createFileRoute("/auth")({
@@ -14,7 +13,6 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,21 +39,11 @@ function AuthPage() {
     }
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
-        });
-        if (error) throw error;
-        toast.success("Conta criada — você já está conectado.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw error;
       navigate({ to: "/", replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha na autenticação");
@@ -64,25 +52,9 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/`,
-      });
-      if (result.error) throw result.error;
-      if (result.redirected) return; // browser will redirect
-      navigate({ to: "/", replace: true });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao entrar com Google");
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="min-h-screen w-full bg-background text-foreground lg:grid lg:grid-cols-[1.05fr_1fr] xl:grid-cols-[1.15fr_1fr]">
-      <ShowcasePanel mode={mode} />
+      <ShowcasePanel />
       <div className="relative flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:py-14">
         {/* subtle ambient orb */}
         <div
@@ -114,67 +86,13 @@ function AuthPage() {
             </div>
           </div>
 
-          <div className="mt-8 flex items-center gap-1 rounded-full border border-border bg-muted/40 p-1 text-xs font-medium">
-            {(["signin", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className="relative flex-1 rounded-full px-3 py-1.5 transition-colors"
-              >
-                {mode === m && (
-                  <motion.span
-                    layoutId="auth-tab-pill"
-                    className="absolute inset-0 rounded-full bg-card shadow-sm ring-1 ring-border"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span className={`relative ${mode === m ? "text-foreground" : "text-muted-foreground"}`}>
-                  {m === "signin" ? "Entrar" : "Criar conta"}
-                </span>
-              </button>
-            ))}
+          <div className="mt-8">
+            <h1 className="text-balance text-[28px] font-bold leading-[1.1] tracking-tight sm:text-3xl">
+              Bem-vindo de volta.<br /><span className="text-muted-foreground">Continue de onde parou.</span>
+            </h1>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={mode}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-7"
-            >
-              <h1 className="text-balance text-[28px] font-bold leading-[1.1] tracking-tight sm:text-3xl">
-                {mode === "signin" ? (
-                  <>Bem-vindo de volta.<br /><span className="text-muted-foreground">Continue de onde parou.</span></>
-                ) : (
-                  <>Configure sua IA<br /><span className="text-muted-foreground">em poucos minutos.</span></>
-                )}
-              </h1>
-            </motion.div>
-          </AnimatePresence>
-
-          <motion.button
-            type="button"
-            onClick={handleGoogle}
-            disabled={busy}
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.985 }}
-            className="group mt-7 flex w-full items-center justify-center gap-2.5 rounded-full border border-border bg-card py-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
-          >
-            <GoogleMark />
-            <span>Continuar com Google</span>
-            <ArrowRight className="size-4 -translate-x-1 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-60" />
-          </motion.button>
-
-          <div className="my-5 flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            ou e-mail
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={handleEmailSubmit} className="space-y-3.5">
+          <form onSubmit={handleEmailSubmit} className="mt-7 space-y-3.5">
             <Field
               icon={<Mail className="size-4" />}
               label="E-mail"
@@ -192,7 +110,7 @@ function AuthPage() {
               type="password"
               value={password}
               onChange={setPassword}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              autoComplete="current-password"
               minLength={6}
               focused={focused === "password"}
               onFocus={() => setFocused("password")}
@@ -232,13 +150,13 @@ function AuthPage() {
                   </motion.span>
                 ) : (
                   <motion.span
-                    key={mode}
+                    key="signin"
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     className="flex items-center gap-2"
                   >
-                    {mode === "signin" ? "Entrar" : "Criar conta"}
+                    Entrar
                     <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </motion.span>
                 )}
@@ -327,7 +245,7 @@ function Field({
 
 /* ─────────── Left showcase panel ─────────── */
 
-function ShowcasePanel({ mode }: { mode: "signin" | "signup" }) {
+function ShowcasePanel() {
   return (
     <div
       className="relative hidden overflow-hidden lg:block"
@@ -417,28 +335,5 @@ function Stat({
       </div>
       <div className="mt-2 text-xl font-bold tracking-tight">{value}</div>
     </motion.div>
-  );
-}
-
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.47c-.28 1.4-1.13 2.59-2.41 3.39v2.82h3.9c2.28-2.1 3.6-5.19 3.6-8.45z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.9-2.82c-1.08.72-2.46 1.16-4.05 1.16-3.11 0-5.74-2.1-6.68-4.93H1.3v3.09C3.28 21.3 7.31 24 12 24z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.32 14.5A7.21 7.21 0 0 1 4.94 12c0-.87.15-1.71.38-2.5V6.41H1.3A11.99 11.99 0 0 0 0 12c0 1.93.46 3.76 1.3 5.59l4.02-3.09z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.75c1.76 0 3.34.61 4.58 1.8l3.43-3.43C17.95 1.19 15.23 0 12 0 7.31 0 3.28 2.7 1.3 6.41l4.02 3.09C6.26 6.85 8.89 4.75 12 4.75z"
-      />
-    </svg>
   );
 }
