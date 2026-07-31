@@ -1,4 +1,13 @@
 
+-- Recria templates/deals/research/user_settings com RLS por user_id (a migration
+-- inicial as criou sem auth, "public all"). DROP explicito porque nao ha dados
+-- reais ainda em nenhuma instalacao nova do kit.
+DROP TABLE IF EXISTS public.research CASCADE;
+DROP TABLE IF EXISTS public.deals CASCADE;
+DROP TABLE IF EXISTS public.templates CASCADE;
+DROP TABLE IF EXISTS public.user_settings CASCADE;
+DROP TABLE IF EXISTS public.report_templates CASCADE;
+
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql
 SECURITY INVOKER
