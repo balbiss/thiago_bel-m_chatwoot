@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   Headset,
+  QrCode,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/_authenticated")({
 const NAV_ITEMS = [
   { to: "/metricas", label: "Dashboard", icon: BarChart3 },
   { to: "/prompt", label: "Prompt da IA", icon: MessageSquareText },
+  { to: "/whatsapp", label: "WhatsApp", icon: QrCode },
   { to: "/agenda", label: "Agenda & Calendário", icon: CalendarClock },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/documentos", label: "Documentos", icon: FileText },

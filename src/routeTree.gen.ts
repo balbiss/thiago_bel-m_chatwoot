@@ -21,6 +21,7 @@ import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedAtendentesRouteImport } from './routes/_authenticated/atendentes'
 import { Route as AuthenticatedAgendaRouteImport } from './routes/_authenticated/agenda'
+import { Route as AuthenticatedWhatsappRouteImport } from './routes/_authenticated/whatsapp'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -81,6 +82,11 @@ const AuthenticatedAgendaRoute = AuthenticatedAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedWhatsappRoute = AuthenticatedWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/metricas': typeof AuthenticatedMetricasRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/prompt': typeof AuthenticatedPromptRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/metricas': typeof AuthenticatedMetricasRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/prompt': typeof AuthenticatedPromptRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
   '/': typeof AuthenticatedIndexRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/_authenticated/metricas': typeof AuthenticatedMetricasRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/prompt': typeof AuthenticatedPromptRoute
+  '/_authenticated/whatsapp': typeof AuthenticatedWhatsappRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/metricas'
     | '/produtos'
     | '/prompt'
+    | '/whatsapp'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/metricas'
     | '/produtos'
     | '/prompt'
+    | '/whatsapp'
     | '/'
     | '/admin'
   id:
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated/metricas'
     | '/_authenticated/produtos'
     | '/_authenticated/prompt'
+    | '/_authenticated/whatsapp'
     | '/_authenticated/'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgendaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/whatsapp': {
+      id: '/_authenticated/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AuthenticatedWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -267,6 +286,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMetricasRoute: typeof AuthenticatedMetricasRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedPromptRoute: typeof AuthenticatedPromptRoute
+  AuthenticatedWhatsappRoute: typeof AuthenticatedWhatsappRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
@@ -278,6 +298,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMetricasRoute: AuthenticatedMetricasRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedPromptRoute: AuthenticatedPromptRoute,
+  AuthenticatedWhatsappRoute: AuthenticatedWhatsappRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
