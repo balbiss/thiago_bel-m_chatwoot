@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, CircleAlert } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 import { useCompany } from "@/lib/company";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,11 +58,9 @@ function AgentDialog({
     }
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke("agent-create", {
+      await invokeEdgeFunction("agent-create", {
         body: { name: form.name.trim(), email: form.email.trim(), password: form.password, team_ids: teamIds },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       toast.success("Atendente criado — já pode entrar com o e-mail e senha cadastrados, sem precisar confirmar nada.");
       setForm(EMPTY_FORM);
       setTeamIds([]);
@@ -142,12 +140,7 @@ function Page() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["agents", company?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("agent-list");
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data as { agents: Agent[]; teams: Team[] };
-    },
+    queryFn: async () => invokeEdgeFunction<{ agents: Agent[]; teams: Team[] }>("agent-list"),
     enabled: !!company?.id,
   });
 
@@ -159,9 +152,7 @@ function Page() {
   const handleRemove = async (agent: Agent) => {
     if (!confirm(`Desligar "${agent.name}"? Ele deixa de aparecer pra ser atribuído em conversas.`)) return;
     try {
-      const { data, error } = await supabase.functions.invoke("agent-remove", { body: { agent_id: agent.id } });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      await invokeEdgeFunction("agent-remove", { body: { agent_id: agent.id } });
       queryClient.invalidateQueries({ queryKey: ["agents", company?.id] });
       toast.success("Atendente desligado.");
     } catch (err) {

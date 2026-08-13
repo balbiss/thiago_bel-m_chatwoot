@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Clock, CreditCard, Sparkles, Wand2, UserRoundSearch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 import { useCompany, useInvalidateCompany } from "@/lib/company";
 import { PROMPT_TEMPLATES } from "@/lib/prompt-templates";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,11 +111,9 @@ function Page() {
     }
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-prompt", {
+      const data = await invokeEdgeFunction<{ prompt: string }>("generate-prompt", {
         body: { description: description.trim() },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       replacePrompt(data.prompt);
       toast.success("Prompt gerado — revise e salve quando estiver bom.");
     } catch (err) {

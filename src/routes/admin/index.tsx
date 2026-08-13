@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Building2, Pencil, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 import type { Tables } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,26 +66,15 @@ async function fetchCompanies(): Promise<Company[]> {
 }
 
 async function createCompany(input: CreateCompanyInput) {
-  const { data, error } = await supabase.functions.invoke("admin-create-company", { body: input });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
+  return invokeEdgeFunction("admin-create-company", { body: input });
 }
 
 async function updateCompany(input: UpdateCompanyInput) {
-  const { data, error } = await supabase.functions.invoke("admin-update-company", { body: input });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
+  return invokeEdgeFunction("admin-update-company", { body: input });
 }
 
 async function deleteCompany(company_id: string) {
-  const { data, error } = await supabase.functions.invoke("admin-delete-company", {
-    body: { company_id },
-  });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  return data;
+  return invokeEdgeFunction("admin-delete-company", { body: { company_id } });
 }
 
 function isOverdue(dueDate: string | null) {

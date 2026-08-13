@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Eraser, Download, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 import { useCompany } from "@/lib/company";
 import type { Tables } from "@/integrations/supabase/types";
 import { Card } from "@/components/ui/card";
@@ -46,9 +47,7 @@ function downloadCsv(leads: Lead[]) {
 }
 
 async function clearChatMemory(phone: string) {
-  const { data, error } = await supabase.functions.invoke("clear-chat-memory", { body: { phone } });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
+  await invokeEdgeFunction("clear-chat-memory", { body: { phone } });
 }
 
 function Page() {
