@@ -32,6 +32,14 @@ const STANDARD_LABELS = [
   { title: "followup_ativo", color: "#95a5a6" },
   { title: "aguardando_pagamento", color: "#f39c12" },
   { title: "pagamento_expirado", color: "#7f8c8d" },
+  // Etiquetas do funil de negócio pedidas pelo cliente (modelo de revenda
+  // consignada) — ver "8. ESTÁGIOS DAS ETIQUETAS" no ai_prompt da empresa.
+  { title: "em_atendimento", color: "#4a90d9" },
+  { title: "vai_pensar", color: "#e8a33d" },
+  { title: "retorno_agendado", color: "#8e44ad" },
+  { title: "quer_consignado", color: "#16a085" },
+  { title: "ativada", color: "#27ae60" },
+  { title: "cliente_final", color: "#2c3e50" },
 ];
 
 function json(body: unknown, status = 200) {
