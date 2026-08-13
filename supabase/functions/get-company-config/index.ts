@@ -1,5 +1,7 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
+// Sem cliente supabase-js de propósito: deploy direto via API de management
+// (sem a CLI local) roda com --no-remote e não resolve o import jsr:, então a
+// function inteira ficava fora do ar com BOOT_ERROR (descoberto ao vivo
+// 2026-08-13). Tudo aqui embaixo usa fetch cru contra REST do Supabase.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CHATWOOT_BASE_URL = Deno.env.get("CHATWOOT_BASE_URL")!;
@@ -49,12 +51,12 @@ Deno.serve(async (req: Request) => {
     const phoneDigits = onlyDigits(phoneParam);
     if (!phoneDigits) return json({ error: "Número de telefone inválido" }, 400);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: companies, error } = await supabase
-      .from("companies")
-      .select("id, name, ai_prompt, whatsapp_phone, due_date, followup_wait_hours, followup_max_attempts")
-      .not("whatsapp_phone", "is", null);
-    if (error) throw error;
+    const companiesRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/companies?select=id,name,ai_prompt,whatsapp_phone,due_date,followup_wait_hours,followup_max_attempts,website_url&whatsapp_phone=not.is.null`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+    );
+    if (!companiesRes.ok) throw new Error("Falha ao buscar empresas");
+    const companies = await companiesRes.json();
 
     const company = companies.find((c) => onlyDigits(c.whatsapp_phone ?? "") === phoneDigits);
     if (!company) return json({ error: "Empresa não encontrada para esse número" }, 404);
@@ -72,17 +74,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: resources, error: resourcesError } = await supabase
-      .from("resources")
-      .select("id, name, calendar_id, active, agenda_config(*)")
-      .eq("company_id", company.id)
-      .eq("active", true);
-    if (resourcesError) throw resourcesError;
+    const resourcesRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/resources?select=id,name,calendar_id,active,agenda_config(*)&company_id=eq.${company.id}&active=eq.true`,
+      { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+    );
+    if (!resourcesRes.ok) throw new Error("Falha ao buscar recursos");
+    const resources = await resourcesRes.json();
 
     return json({
       company_id: company.id,
       name: company.name,
       ai_prompt: company.ai_prompt,
+      website_url: company.website_url,
       blocked: false,
       followup_wait_hours: company.followup_wait_hours,
       followup_max_attempts: company.followup_max_attempts,
