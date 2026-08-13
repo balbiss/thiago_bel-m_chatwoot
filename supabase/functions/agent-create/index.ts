@@ -1,5 +1,7 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
+// Sem cliente supabase-js de propósito: deploy direto via API de management
+// (sem a CLI local) roda com --no-remote e não resolve o import jsr:, então a
+// function inteira ficava fora do ar com BOOT_ERROR (descoberto ao vivo
+// 2026-08-13). Tudo aqui embaixo usa fetch cru contra REST/Auth do Supabase.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -41,19 +43,20 @@ async function createCompanyOwner(req: Request) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) throw new Error("UNAUTHORIZED");
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: authHeader },
   });
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error("UNAUTHORIZED");
+  if (!userRes.ok) throw new Error("UNAUTHORIZED");
+  const userData = await userRes.json();
+  if (!userData?.id) throw new Error("UNAUTHORIZED");
 
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const { data: company, error: companyError } = await admin
-    .from("companies")
-    .select("id, chatwoot_account_id, chatwoot_inbox_id")
-    .eq("user_id", userData.user.id)
-    .maybeSingle();
-  if (companyError) throw companyError;
+  const companyRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/companies?select=id,chatwoot_account_id,chatwoot_inbox_id&user_id=eq.${userData.id}`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } },
+  );
+  if (!companyRes.ok) throw new Error("Falha ao buscar empresa");
+  const companies = await companyRes.json();
+  const company = companies[0];
   if (!company) throw new Error("FORBIDDEN");
 
   return company;

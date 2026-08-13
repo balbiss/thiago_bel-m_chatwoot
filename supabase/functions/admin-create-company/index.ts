@@ -1,5 +1,7 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
+// Sem cliente supabase-js de propósito: deploy direto via API de management
+// (sem a CLI local) roda com --no-remote e não resolve o import jsr:, então a
+// function inteira ficava fora do ar com BOOT_ERROR (descoberto ao vivo
+// 2026-08-13). Tudo aqui embaixo usa fetch cru contra REST/Auth do Supabase.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -129,23 +131,28 @@ async function ensureStandardLabels(accountId: number) {
   }
 }
 
+async function getUserFromAuthHeader(authHeader: string) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: authHeader },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 // Só quem está na tabela admins pode provisionar empresas.
 async function requireAdmin(req: Request) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) throw new Error("UNAUTHORIZED");
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) throw new Error("UNAUTHORIZED");
+  const user = await getUserFromAuthHeader(authHeader);
+  if (!user?.id) throw new Error("UNAUTHORIZED");
 
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", userData.user.id)
-    .maybeSingle();
-  if (!admin) throw new Error("FORBIDDEN");
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/admins?select=id&user_id=eq.${user.id}`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: authHeader } },
+  );
+  const rows = res.ok ? await res.json() : [];
+  if (!rows.length) throw new Error("FORBIDDEN");
 }
 
 Deno.serve(async (req: Request) => {
@@ -181,13 +188,17 @@ Deno.serve(async (req: Request) => {
     // retentativa com o mesmo e-mail criava uma conta nova no Chatwoot e só
     // falhava no último passo, "A user with this email address has already been
     // registered").
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-      email: owner_email,
-      password: owner_password,
-      email_confirm: true,
+    const createUserRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: owner_email, password: owner_password, email_confirm: true }),
     });
-    if (userError) throw userError;
+    const userData = await createUserRes.json();
+    if (!createUserRes.ok) throw new Error(userData.msg || userData.message || userData.error_description || "Falha ao criar usuário");
 
     const account = await createIsolatedAccount(name);
 
@@ -204,18 +215,25 @@ Deno.serve(async (req: Request) => {
     const agent = await createCompanyAgent(account.id, name, owner_email, owner_password);
     await createDefaultTeams(account.id, agent.id);
 
-    const { data: company, error: companyError } = await supabase
-      .from("companies")
-      .insert({
-        user_id: userData.user.id,
+    const insertCompanyRes = await fetch(`${SUPABASE_URL}/rest/v1/companies`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        user_id: userData.id,
         name,
         whatsapp_phone: phone,
         chatwoot_account_id: String(account.id),
         chatwoot_inbox_id: String(inbox.id),
-      })
-      .select()
-      .single();
-    if (companyError) throw companyError;
+      }),
+    });
+    const companyRows = await insertCompanyRes.json();
+    if (!insertCompanyRes.ok) throw new Error(companyRows.message || "Falha ao salvar a empresa");
+    const company = companyRows[0];
 
     return json({
       company_id: company.id,

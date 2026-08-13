@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, FileText, Pencil, Trash2, Upload, Video, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edge-functions";
 import { useCompany } from "@/lib/company";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,16 +58,32 @@ function Page() {
       const { data: signed } = await supabase.storage.from("company-documents").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
       const file_url = signed?.signedUrl ?? path;
 
-      const { error } = await supabase.from("company_documents").insert({
-        company_id: company.id,
-        title: file.name.replace(/\.[a-z0-9]+$/i, ""),
-        file_url,
-        content_type: file.type || "application/pdf",
-      });
+      const { data: inserted, error } = await supabase
+        .from("company_documents")
+        .insert({
+          company_id: company.id,
+          title: file.name.replace(/\.[a-z0-9]+$/i, ""),
+          file_url,
+          content_type: file.type || "application/pdf",
+        })
+        .select("id")
+        .single();
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["company-documents", company.id] });
       toast.success("Documento enviado.");
+
+      const isPdf = (file.type || "").includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+      if (isPdf && inserted) {
+        invokeEdgeFunction("process-document", { body: { document_id: inserted.id } })
+          .then(() => {
+            toast.success("A IA já leu o conteúdo desse PDF — pode consultar pra responder clientes.");
+            queryClient.invalidateQueries({ queryKey: ["company-documents", company.id] });
+          })
+          .catch(() =>
+            toast.error("O PDF foi enviado, mas não consegui ler o conteúdo dele automaticamente."),
+          );
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao enviar o documento");
     } finally {
@@ -115,7 +132,7 @@ function Page() {
     <div>
       <PageHeader
         title="Documentos"
-        description="PDFs e vídeos que a IA pode identificar pelo nome e enviar aos clientes durante o atendimento."
+        description="PDFs: a IA lê o conteúdo e consulta pra responder dúvidas dos clientes. Vídeos: a IA pode identificar pelo nome e enviar durante o atendimento."
       />
       <div className="max-w-4xl p-8 lg:p-14">
         <input
@@ -172,6 +189,11 @@ function Page() {
                       <Icon className="size-4 shrink-0 text-muted-foreground" />
                       <span className="text-sm font-medium">{doc.title}</span>
                       <span className="text-xs text-muted-foreground">{isVideo ? "vídeo" : "PDF"}</span>
+                      {!isVideo && (
+                        <span className={`text-xs ${doc.content_text ? "text-emerald-600" : "text-muted-foreground"}`}>
+                          {doc.content_text ? "· IA já leu" : "· processando..."}
+                        </span>
+                      )}
                     </a>
                     <Button variant="ghost" size="icon" onClick={() => startRename(doc.id, doc.title)}>
                       <Pencil className="size-4" />
