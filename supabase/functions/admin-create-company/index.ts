@@ -165,6 +165,12 @@ Deno.serve(async (req: Request) => {
     if (!name || !whatsapp_phone || !owner_email || !owner_password) {
       return json({ error: "name, whatsapp_phone, owner_email e owner_password são obrigatórios" }, 400);
     }
+    if (owner_password.length < 8) {
+      return json({ error: "A senha precisa ter pelo menos 8 caracteres" }, 400);
+    }
+    if (!/[!@#$%^&*()_+\-=[\]{}|\\/.,<>?~]/.test(owner_password)) {
+      return json({ error: "A senha precisa ter pelo menos 1 caractere especial (ex: !, @, #, $)" }, 400);
+    }
 
     const phone = whatsapp_phone.startsWith("+") ? whatsapp_phone : `+${whatsapp_phone}`;
 

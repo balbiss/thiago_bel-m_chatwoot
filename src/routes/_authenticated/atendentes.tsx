@@ -56,6 +56,10 @@ function AgentDialog({
       toast.error("A senha precisa ter pelo menos 8 caracteres.");
       return;
     }
+    if (!/[!@#$%^&*()_+\-=[\]{}|\\/.,<>?~]/.test(form.password)) {
+      toast.error("A senha precisa ter pelo menos 1 caractere especial (ex: !, @, #, $, %).");
+      return;
+    }
     setSaving(true);
     try {
       await invokeEdgeFunction("agent-create", {
@@ -103,10 +107,11 @@ function AgentDialog({
               value={form.password}
               onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
               className="mt-1.5"
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Mínimo 8 caracteres, com 1 caractere especial"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Já entra ativo com essa senha — não precisa confirmar nenhum e-mail.
+              Mínimo 8 caracteres e pelo menos 1 caractere especial (ex: !, @, #, $). Já entra ativo com essa senha
+              — não precisa confirmar nenhum e-mail.
             </p>
           </div>
           {teams.length > 0 && (

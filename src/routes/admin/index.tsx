@@ -160,6 +160,10 @@ function Page() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (form.owner_password.length < 8 || !/[!@#$%^&*()_+\-=[\]{}|\\/.,<>?~]/.test(form.owner_password)) {
+                    toast.error("A senha precisa ter pelo menos 8 caracteres e 1 caractere especial (ex: !, @, #, $).");
+                    return;
+                  }
                   createMutation.mutate(form);
                 }}
                 className="flex flex-col gap-4"
@@ -199,8 +203,12 @@ function Page() {
                     type="text"
                     value={form.owner_password}
                     onChange={(e) => setForm((f) => ({ ...f, owner_password: e.target.value }))}
+                    placeholder="Mínimo 8 caracteres, com 1 caractere especial"
                     required
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Mínimo 8 caracteres e pelo menos 1 caractere especial (ex: !, @, #, $).
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="due_date">Vencimento (opcional)</Label>

@@ -80,6 +80,9 @@ Deno.serve(async (req: Request) => {
     if (password.length < 8) {
       return json({ error: "A senha precisa ter pelo menos 8 caracteres" }, 400);
     }
+    if (!/[!@#$%^&*()_+\-=[\]{}|\\/.,<>?~]/.test(password)) {
+      return json({ error: "A senha precisa ter pelo menos 1 caractere especial (ex: !, @, #, $)" }, 400);
+    }
 
     const accountId = company.chatwoot_account_id;
 
