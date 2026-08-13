@@ -168,6 +168,21 @@ Deno.serve(async (req: Request) => {
 
     const phone = whatsapp_phone.startsWith("+") ? whatsapp_phone : `+${whatsapp_phone}`;
 
+    // Criar o usuário do Supabase Auth ANTES de mexer no Chatwoot: se o e-mail já
+    // estiver cadastrado (retentativa comum quando uma tentativa anterior falhou),
+    // falha aqui sem deixar conta/inbox/labels/time órfãos no Chatwoot pra trás —
+    // era exatamente isso que estava acontecendo (confirmado 2026-08-13: cada
+    // retentativa com o mesmo e-mail criava uma conta nova no Chatwoot e só
+    // falhava no último passo, "A user with this email address has already been
+    // registered").
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+      email: owner_email,
+      password: owner_password,
+      email_confirm: true,
+    });
+    if (userError) throw userError;
+
     const account = await createIsolatedAccount(name);
 
     const inbox = await chatwootFetch(`/api/v1/accounts/${account.id}/inboxes`, CHATWOOT_API_TOKEN, {
@@ -182,15 +197,6 @@ Deno.serve(async (req: Request) => {
     await registerSdrWebhook(account.id);
     const agent = await createCompanyAgent(account.id, name, owner_email, owner_password);
     await createDefaultTeams(account.id, agent.id);
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-      email: owner_email,
-      password: owner_password,
-      email_confirm: true,
-    });
-    if (userError) throw userError;
 
     const { data: company, error: companyError } = await supabase
       .from("companies")
